@@ -1,6 +1,6 @@
-# FDA-10: Multimodal Credit Risk Analysis
+# 📊 FDA-10: Multimodal Credit Risk Analysis
 
-## Overview
+## 🔍 Overview
 
 FDA-10 is a **large-scale, end-to-end multimodal credit risk analytics pipeline** that integrates structured financial data from **SEC XBRL filings** with **NLP-derived textual features** to predict corporate credit ratings and investment-grade classification.
 
@@ -8,18 +8,18 @@ The project demonstrates how combining **quantitative financial ratios** with **
 
 ---
 
-## Key Objectives
+## 🎯 Key Objectives
 
-- Process **large-scale SEC XBRL financial data** across multiple years
-- Engineer financially meaningful ratios for credit risk assessment
-- Extract NLP-based indicators from MD&A-style textual data
-- Build and compare **financial-only vs multimodal** ML models
-- Evaluate performance on **binary** and **multiclass** prediction tasks
-- Provide an automated, configuration-driven experimentation pipeline
+- ⚙️ Process **large-scale SEC XBRL financial data** across multiple years
+- 🔧 Engineer financially meaningful ratios for credit risk assessment
+- 📝 Extract NLP-based indicators from MD&A-style textual data
+- 🤖 Build and compare **financial-only vs multimodal** ML models
+- 📊 Evaluate performance on **binary** and **multiclass** prediction tasks
+- ⚡ Provide an automated, configuration-driven experimentation pipeline
 
 ---
 
-## Dataset Summary
+## 📈 Dataset Summary
 
 | Stage | Companies | Features |
 | --- | --- | --- |
@@ -27,13 +27,13 @@ The project demonstrates how combining **quantitative financial ratios** with **
 | Cleaned financial dataset | 35,098 | 34 |
 | Final multimodal dataset | 35,098 | 47 |
 
-### Data Sources
+### 📂 Data Sources
 
 - **Primary**: SEC EDGAR XBRL financial filings (2022–2024, 12 quarters)
 - **Secondary**: Public corporate credit rating datasets
 - **Textual**: Synthetic MD&A-style disclosures (used to validate NLP pipeline)
 
-> ⚠️ Note
+> ⚠️ **Note**
 > 
 > 
 > Raw SEC XBRL data (~41M records, ~6.6GB) and large processed CSV files are intentionally **not included** in this repository due to size constraints.
@@ -43,7 +43,7 @@ The project demonstrates how combining **quantitative financial ratios** with **
 
 ---
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 FDA-10/
@@ -78,70 +78,64 @@ FDA-10/
 
 ---
 
-## Methodology
+## 📋 Methodology
 
-### 1. Data Extraction
-
+### 1. 📥 Data Extraction
 - Parsed quarterly SEC XBRL numeric files (`num.txt`, `sub.txt`, `tag.txt`)
 - Extracted key financial metrics (assets, liabilities, revenue, income, debt)
 - Aggregated data at the company level
 
-### 2. Data Cleaning & Feature Engineering
-
+### 2. 🧹 Data Cleaning & Feature Engineering
 - Missing value analysis and domain-aware imputation
 - Outlier detection and removal
 - Financial ratio computation
 - Derived features (financial health score, company size)
 
-### 3. NLP Feature Engineering
-
+### 3. 📝 NLP Feature Engineering
 - Synthetic MD&A-style text generation (for pipeline validation)
 - Extraction of sentiment, risk, uncertainty, and readability metrics
 - Correlation analysis between NLP features and credit ratings
 
-### 4. Machine Learning Modeling
-
-- Tasks:
+### 4. 🤖 Machine Learning Modeling
+- **Tasks**:
     - Binary: Investment Grade vs Non-Investment Grade
     - Multiclass: Credit rating categories
-- Models:
+- **Models**:
     - Random Forest
     - Gradient Boosting
     - Logistic Regression
     - Support Vector Machine (SVM)
-- Feature configurations:
+- **Feature configurations**:
     - Financial-only
     - Financial + NLP (multimodal)
 
-### 5. Automation & Reproducibility
-
+### 5. ⚙️ Automation & Reproducibility
 - Modular Python scripts in `src/`
 - YAML-based configuration
 - Automated saving of metrics, results, and artifacts
 
 ---
 
-## Results
+## 📊 Results
 
 ### Performance Improvement from Multimodal Features
 
-- **Binary classification**
+- **Binary classification** 🎯
     - Financial-only: 97.88%
     - Multimodal: 100.00%
-    - Improvement: **+2.17%**
-- **Multiclass classification**
+    - Improvement: **+2.17%** 📈
+- **Multiclass classification** 🏷️
     - Financial-only: 93.76%
     - Multimodal: 95.94%
-    - Improvement: **+2.32%**
+    - Improvement: **+2.32%** 📈
 
 Feature importance analysis shows that **NLP-derived indicators** (risk, uncertainty, sentiment balance) often outperform traditional financial ratios.
 
-> ⚠️ High binary accuracy highlights strong feature correlations; leakage risks are discussed transparently in the report.
-> 
+> ⚠️ **Note:** High binary accuracy highlights strong feature correlations; leakage risks are discussed transparently in the report.
 
 ---
 
-## How to Run
+## 🚀 How to Run
 
 ### 1. Environment Setup
 
@@ -184,5 +178,6 @@ python src/model_training.py
 **Aman Parganiha**
 
 M.Tech CSE, IIIT Naya Raipur
+
 
 Course: Data Visualization and Analysis
