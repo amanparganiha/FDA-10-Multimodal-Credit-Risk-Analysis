@@ -148,11 +148,11 @@ pip install -r requirements.txt
 
 ### 2. Run Notebooks (Recommended Order)
 
-1. `01_data_extraction.ipynb`
-2. `02_eda_preprocessing.ipynb`
-3. `03_nlp_feature_engineering.ipynb`
-4. `04_ml_modeling.ipynb`
-5. `05_pipeline_automation.ipynb`
+1. `01_data_extraction.ipynb` 🔍
+2. `02_eda_preprocessing.ipynb`🧹
+3. `03_nlp_feature_engineering.ipynb`📝
+4. `04_ml_modeling.ipynb`🤖
+5. `05_pipeline_automation.ipynb`⚡
 
 ### 3. Script-Based Execution
 
@@ -163,21 +163,22 @@ python src/model_training.py
 
 ---
 
-## Limitations & Future Work
+## 🚧 Limitations & Future Work
 
-- Integrate **real MD&A text** from SEC filings
-- Time-aware and leakage-controlled validation
-- Deep learning models (LSTM, Transformers)
-- Real-time inference and deployment
-- Incorporation of macroeconomic indicators
+- 🔗 Integrate **real MD&A text** from SEC filings
+- ⏰ Time-aware and leakage-controlled validation
+- 🧠 Deep learning models (LSTM, Transformers)
+- ⚡ Real-time inference and deployment
+- 🌍 Incorporation of macroeconomic indicators
 
 ---
 
-## Author
+## 👨‍💻 Author
 
 **Aman Parganiha**
 
-M.Tech CSE, IIIT Naya Raipur
+🎓 M.Tech CSE, IIIT Naya Raipur
 
 
-Course: Data Visualization and Analysis
+📚 Course: Data Visualization and Analysis
+
