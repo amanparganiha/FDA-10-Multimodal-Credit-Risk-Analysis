@@ -1,0 +1,30 @@
+{
+  "financial_only": {
+    "binary": {
+      "model": "random_forest",
+      "accuracy": 0.9787749287749288,
+      "f1_score": 0.9793141746494516,
+      "auc_roc": 0.998651656063151
+    },
+    "multiclass": {
+      "model": "random_forest",
+      "accuracy": 0.9376068376068376,
+      "f1_score": 0.9373111648639953,
+      "auc_roc": 0.9949829156995713
+    }
+  },
+  "all": {
+    "binary": {
+      "model": "random_forest",
+      "accuracy": 1.0,
+      "f1_score": 1.0,
+      "auc_roc": 1.0
+    },
+    "multiclass": {
+      "model": "gradient_boosting",
+      "accuracy": 0.9594017094017094,
+      "f1_score": 0.9592853311873332,
+      "auc_roc": 0.9973213308999025
+    }
+  }
+}
