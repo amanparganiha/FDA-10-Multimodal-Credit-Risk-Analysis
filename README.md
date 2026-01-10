@@ -132,6 +132,19 @@ FDA-10/
 Feature importance analysis shows that **NLP-derived indicators** (risk, uncertainty, sentiment balance) often outperform traditional financial ratios.
 
 > ⚠️ **Note:** High binary accuracy highlights strong feature correlations; leakage risks are discussed transparently in the report.
+>
+
+## Interactive Dashboard
+
+An interactive **Streamlit-based analytics dashboard** is available to explore key aspects of the project, including:
+- Dataset statistics and distributions  
+- Financial and NLP feature insights  
+- Feature importance analysis  
+- Binary and multiclass model performance comparisons  
+
+🔗 **Live Dashboard:** https://bigdata-analytics-dashboard.streamlit.app/
+
+> *Note: This dashboard is intended for exploratory analysis and demonstration of project results.*
 
 ---
 
@@ -181,4 +194,5 @@ python src/model_training.py
 
 
 📚 Course: Data Visualization and Analysis
+
 
