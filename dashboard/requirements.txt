@@ -1,6 +1,8 @@
+# Set Python version = 3.13 in Streamlit Cloud Advanced settings (3.14 has no
+# scikit-learn 1.7.1 wheel and fails to build from source).
 streamlit>=1.31
-pandas>=2.0
-numpy>=1.24
+pandas>=2.0,<3
+numpy>=1.24,<3
 plotly>=5.18
 scikit-learn==1.7.1
 joblib>=1.3

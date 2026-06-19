@@ -27,6 +27,14 @@ A `.gitignore` is included that already excludes the above.
 - **Repository:** amanparganiha/FDA-10-Multimodal-Credit-Risk-Analysis
 - **Branch:** main
 - **Main file path:** `dashboard/dashboard_app.py`   ← verify this in the app's Settings
+- **Python version: 3.13**  ← REQUIRED. Set this under "Advanced settings" when deploying.
+
+### Why Python 3.13 (not 3.14)
+scikit-learn 1.7.1 (the version the models were pickled with) has no prebuilt wheel for
+Python 3.14, so 3.14 tries to build it (and scipy) from source and fails with
+`ERROR: Unknown compiler(s): gfortran`. Python 3.13 installs everything from wheels.
+If you ever see a `gfortran` / `Failed to build scikit-learn` error in the build log,
+the Python version is the cause — set it to 3.13 and reboot/redeploy.
 
 ## Why the previous deploy was broken
 1. The GitHub repo was **missing** `dashboard/`, the models, and the dataset — only
