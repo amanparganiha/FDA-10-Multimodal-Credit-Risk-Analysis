@@ -1,15 +1,9 @@
-# requirements.txt
-pandas==1.5.3
-numpy==1.21.6
-scikit-learn==1.2.2
-nltk==3.8.1
-textstat==0.7.3
-vaderSentiment==3.3.2
-beautifulsoup4==4.12.2
-requests==2.31.0
-sec-edgar-downloader==4.1.2
-matplotlib==3.7.1
-seaborn==0.12.2
-plotly==5.14.1
-jupyter==1.0.0
-tqdm==4.65.0
+# Streamlit dashboard dependencies (deployed app)
+# scikit-learn is pinned to the version the models were trained/pickled with (1.7.1)
+# so the .pkl model files load cleanly on Streamlit Cloud.
+streamlit>=1.31
+pandas>=2.0
+numpy>=1.24
+plotly>=5.18
+scikit-learn==1.7.1
+joblib>=1.3

@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Redundant full duplicate of the repo (do NOT upload)
+project/
+
+# Large research artifacts NOT needed by the dashboard.
+# (GitHub warns >50MB and blocks >100MB; these are 40-73MB each.)
+data/processed/model_artifacts/
+data/processed/*.csv
+
+# Keep ONLY what the deployed dashboard loads:
+#   dashboard/dashboard_app.py, dashboard/model_loader.py,
+#   dashboard/credit_ratings_multimodal_final.csv,
+#   dashboard/models/all_multiclass_gradient_boosting.pkl,
+#   dashboard/models/all_binary_gradient_boosting.pkl,
+#   dashboard/models/tfidf_vectorizer.joblib
+# (The rest of dashboard/models/ is optional.)
