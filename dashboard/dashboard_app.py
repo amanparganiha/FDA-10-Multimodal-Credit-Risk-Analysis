@@ -215,6 +215,69 @@ def create_sample_data():
     })
 
 # ============================================
+# REAL MODEL EVALUATION (computed from the trained models)
+# ============================================
+@st.cache_resource(show_spinner=False)
+def get_model_evaluation(_predictor):
+    """
+    Compute REAL evaluation metrics from the trained models on the held-out test
+    split. The split is reproduced deterministically to match training
+    (test_size=0.2, stratify, random_state=42), so the numbers match the
+    reported results. Cached so it runs only once.
+    """
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import (confusion_matrix, roc_curve, auc,
+                                  accuracy_score, precision_recall_fscore_support)
+    LAB = {0: 'A', 1: 'AA+', 2: 'B', 3: 'BB', 4: 'BBB'}
+    inv = {v: k for k, v in LAB.items()}
+    out = {}
+    try:
+        mm = _predictor.models.get('multiclass')
+        fb = _predictor.models.get('binary')
+        if mm is None or not hasattr(mm, 'feature_names_in_'):
+            return None
+        feats = list(mm.feature_names_in_)
+        edf = pd.read_csv(os.path.join(BASE_DIR, 'credit_ratings_multimodal_final.csv'))
+        X = edf[feats]
+
+        # ---- multi-class on the reproduced held-out test split ----
+        ym = edf['rating'].astype(str)
+        _, Xte, _, yte = train_test_split(X, ym, test_size=0.2, stratify=ym, random_state=42)
+        ytrue = yte.map(inv).values
+        ypred = mm.predict(Xte)
+        out['importance'] = sorted(
+            zip(feats, [float(v) for v in mm.feature_importances_]), key=lambda x: -x[1])
+        order = [0, 1, 4, 3, 2]  # A, AA+, BBB, BB, B (best -> worst)
+        out['cm_labels'] = [LAB[i] for i in order]
+        out['cm'] = confusion_matrix(ytrue, ypred, labels=order)
+        out['mc_acc'] = float(accuracy_score(ytrue, ypred))
+        out['mc_prf'] = [float(v) for v in
+                         precision_recall_fscore_support(ytrue, ypred, average='weighted', zero_division=0)[:3]]
+        proba = mm.predict_proba(Xte)
+        roc = []
+        for i, c in enumerate(mm.classes_):
+            fpr, tpr, _ = roc_curve((ytrue == c).astype(int), proba[:, i])
+            roc.append((LAB[int(c)], fpr, tpr, float(auc(fpr, tpr))))
+        out['roc'] = roc
+        out['mc_auc'] = float(np.mean([r[3] for r in roc]))
+
+        # ---- binary (investment grade) on its reproduced test split ----
+        if fb is not None:
+            yb = edf['investment_grade'].astype(int)
+            _, Xteb, _, yteb = train_test_split(X, yb, test_size=0.2, stratify=yb, random_state=42)
+            ybp = fb.predict(Xteb)
+            out['bin_acc'] = float(accuracy_score(yteb, ybp))
+            out['bin_prf'] = [float(v) for v in
+                              precision_recall_fscore_support(yteb, ybp, average='weighted', zero_division=0)[:3]]
+            if hasattr(fb, 'predict_proba'):
+                bfpr, btpr, _ = roc_curve(yteb, fb.predict_proba(Xteb)[:, 1])
+                out['bin_auc'] = float(auc(bfpr, btpr))
+    except Exception as e:
+        out['error'] = str(e)
+    return out
+
+
+# ============================================
 # MAIN APP
 # ============================================
 def main():
@@ -768,131 +831,140 @@ def main():
         with tab2:
             st.subheader("Confusion Matrix Visualization")
             
-            if 'rating' in df.columns:
-                ratings = sorted(df['rating'].unique())
-                n = len(ratings)
-                
-                np.random.seed(42)
-                cm = np.random.randint(50, 200, size=(n, n))
-                np.fill_diagonal(cm, np.random.randint(300, 500, n))
-                
+            evalr = get_model_evaluation(predictor) if predictor else None
+            if evalr and 'cm' in evalr:
+                cm = evalr['cm']
+                labels = evalr['cm_labels']
+
                 fig = go.Figure(data=go.Heatmap(
                     z=cm,
-                    x=ratings,
-                    y=ratings,
+                    x=labels,
+                    y=labels,
                     colorscale='Blues',
                     text=cm,
                     texttemplate='<b>%{text}</b>',
                     showscale=True
                 ))
-                
+
                 fig.update_layout(
                     **plotly_dark_template,
-                    title='Confusion Matrix - Multi-class (Gradient Boosting)',
+                    title=f'Confusion Matrix · Multi-class Gradient Boosting · Test set (n={int(cm.sum()):,})',
                     xaxis_title='Predicted Rating',
                     yaxis_title='Actual Rating',
                     height=550
                 )
-                
+
                 st.plotly_chart(fig, use_container_width=True)
+                st.caption("Computed live from the trained model on the held-out test split "
+                           "(rows = actual rating, columns = predicted).")
+            else:
+                st.info("ℹ️ Confusion matrix needs the trained model loaded (currently running in demo mode).")
         
         # NEW TAB: ROC Curves
         with tab3:
             st.subheader("ROC Curves - Multi-class Classification")
-            
-            st.info("📊 ROC curves show the model's discrimination ability. AUC = 0.997 indicates excellent performance!")
-            
-            fig = go.Figure()
-            
-            if 'rating' in df.columns:
-                ratings = sorted(df['rating'].unique())
+
+            evalr = get_model_evaluation(predictor) if predictor else None
+            if evalr and 'roc' in evalr:
+                mean_auc = evalr.get('mc_auc', 0.0)
+                st.info(f"📊 ROC curves (one-vs-rest) from the model's real probabilities on the "
+                        f"held-out test set. Mean AUC = {mean_auc:.3f}.")
+
+                fig = go.Figure()
                 colors_roc = ['#4a9eff', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
-                
-                for idx, rating in enumerate(ratings):
-                    np.random.seed(idx + 42)
-                    fpr = np.linspace(0, 1, 100)
-                    tpr = np.power(fpr, 0.3 + idx * 0.1)
-                    
+                for idx, (rating, fpr, tpr, a) in enumerate(evalr['roc']):
                     fig.add_trace(go.Scatter(
                         x=fpr, y=tpr,
-                        name=f'{rating} (AUC = {0.990 + idx*0.001:.3f})',
+                        name=f'{rating} (AUC = {a:.3f})',
                         mode='lines',
                         line=dict(color=colors_roc[idx % len(colors_roc)], width=3)
                     ))
-            
-            fig.add_trace(go.Scatter(
-                x=[0, 1], y=[0, 1],
-                mode='lines',
-                line=dict(dash='dash', color='#6b7280', width=2),
-                name='Random (AUC = 0.500)',
-                showlegend=True
-            ))
-            
-            fig.update_layout(
-                **plotly_dark_template,
-                title='ROC Curves',
-                xaxis_title='False Positive Rate',
-                yaxis_title='True Positive Rate',
-                height=550,
-                legend=dict(x=0.6, y=0.1, bgcolor='rgba(26, 29, 36, 0.8)')
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.markdown("""
-                <div style='background: #252d3a; padding: 20px; border-radius: 12px;'>
-                    <h4 style='color: #4a9eff; margin-top: 0;'>📖 How to Read</h4>
-                    <ul style='line-height: 1.8;'>
-                        <li><b>Higher curve</b> = Better model</li>
-                        <li><b>AUC = 1.0</b> = Perfect</li>
-                        <li><b>AUC = 0.5</b> = Random</li>
-                        <li><b>Our AUC ≈ 0.997</b> = Excellent!</li>
-                    </ul>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col2:
-                st.markdown("""
-                <div style='background: #252d3a; padding: 20px; border-radius: 12px;'>
-                    <h4 style='color: #10b981; margin-top: 0;'>✨ What This Means</h4>
-                    <ul style='line-height: 1.8;'>
-                        <li>Distinguishes classes <b>very accurately</b></li>
-                        <li>99.7% area = <b>strong predictive power</b></li>
-                        <li>Gradient Boosting excels at <b>patterns</b></li>
-                        <li>NLP boosts <b>discrimination ability</b></li>
-                    </ul>
-                </div>
-                """, unsafe_allow_html=True)
+
+                fig.add_trace(go.Scatter(
+                    x=[0, 1], y=[0, 1],
+                    mode='lines',
+                    line=dict(dash='dash', color='#6b7280', width=2),
+                    name='Random (AUC = 0.500)',
+                    showlegend=True
+                ))
+
+                fig.update_layout(
+                    **plotly_dark_template,
+                    title='ROC Curves (Held-out Test Set)',
+                    xaxis_title='False Positive Rate',
+                    yaxis_title='True Positive Rate',
+                    height=550,
+                    legend=dict(x=0.6, y=0.1, bgcolor='rgba(26, 29, 36, 0.8)')
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown(f"""
+                    <div style='background: #252d3a; padding: 20px; border-radius: 12px;'>
+                        <h4 style='color: #4a9eff; margin-top: 0;'>📖 How to Read</h4>
+                        <ul style='line-height: 1.8;'>
+                            <li><b>Higher curve</b> = Better model</li>
+                            <li><b>AUC = 1.0</b> = Perfect</li>
+                            <li><b>AUC = 0.5</b> = Random</li>
+                            <li><b>Our mean AUC = {mean_auc:.3f}</b></li>
+                        </ul>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with col2:
+                    best = max(evalr['roc'], key=lambda r: r[3])
+                    worst = min(evalr['roc'], key=lambda r: r[3])
+                    st.markdown(f"""
+                    <div style='background: #252d3a; padding: 20px; border-radius: 12px;'>
+                        <h4 style='color: #10b981; margin-top: 0;'>✨ What This Means</h4>
+                        <ul style='line-height: 1.8;'>
+                            <li>Best-separated class: <b>{best[0]} (AUC {best[3]:.3f})</b></li>
+                            <li>Hardest class: <b>{worst[0]} (AUC {worst[3]:.3f})</b></li>
+                            <li>Computed from real <b>predict_proba</b> output</li>
+                            <li>Gradient Boosting on the test split</li>
+                        </ul>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("ℹ️ ROC curves need the trained model loaded (currently running in demo mode).")
         
         with tab4:
             st.subheader("Detailed Performance Metrics")
             
             st.markdown("### 📊 Classification Reports")
-            
+            st.caption("Weighted precision/recall/F1 computed live from the trained Gradient Boosting "
+                       "models on the held-out test split.")
+
+            evalr = get_model_evaluation(predictor) if predictor else None
             col1, col2 = st.columns(2)
-            
+
             with col1:
-                st.markdown("**Binary Classification**")
-                st.code("""
-Precision: 1.00
-Recall:    1.00
-F1-Score:  1.00
-Accuracy:  100.0%
-AUC-ROC:   1.00
-                """)
-            
+                st.markdown("**Binary Classification (Investment Grade)**")
+                if evalr and 'bin_prf' in evalr:
+                    bp, br, bf = evalr['bin_prf']
+                    st.code(
+                        f"Precision: {bp:.2f}\n"
+                        f"Recall:    {br:.2f}\n"
+                        f"F1-Score:  {bf:.2f}\n"
+                        f"Accuracy:  {evalr['bin_acc']*100:.2f}%\n"
+                        f"AUC-ROC:   {evalr.get('bin_auc', float('nan')):.3f}"
+                    )
+                else:
+                    st.info("Model not loaded (demo mode).")
+
             with col2:
                 st.markdown("**Multi-class Classification**")
-                st.code("""
-Precision: 0.96
-Recall:    0.96
-F1-Score:  0.96
-Accuracy:  95.94%
-AUC-ROC:   0.997
-                """)
+                if evalr and 'mc_prf' in evalr:
+                    mp, mr, mf = evalr['mc_prf']
+                    st.code(
+                        f"Precision: {mp:.2f}\n"
+                        f"Recall:    {mr:.2f}\n"
+                        f"F1-Score:  {mf:.2f}\n"
+                        f"Accuracy:  {evalr['mc_acc']*100:.2f}%\n"
+                        f"AUC-ROC:   {evalr.get('mc_auc', float('nan')):.3f}"
+                    )
+                else:
+                    st.info("Model not loaded (demo mode).")
     
     # PAGE 4: PREDICTIONS - Adding Radar Chart
     elif page == "🔮 Make Predictions":
@@ -1110,21 +1182,26 @@ AUC-ROC:   0.997
         st.header("📈 Feature Importance Analysis")
         
         st.markdown("### 🎯 Top Features from Your Trained Model")
-        
-        features_data = {
-            'Feature': ['nlp_safety_score', 'nlp_risk_score', 'nlp_negativity', 'nlp_uncertainty',
-                       'nlp_positivity', 'nlp_sentiment_balance', 'nlp_readability', 
-                       'nlp_financial_density', 'nlp_complexity', 'nlp_text_length',
-                       'financial_health_score', 'current_ratio_norm', 'current_ratio',
-                       'current_assets', 'net_income'],
-            'Importance': [0.125058, 0.121706, 0.121059, 0.120103, 0.106083, 0.100654,
-                          0.074650, 0.073657, 0.059309, 0.042298, 0.025330, 0.013735,
-                          0.009290, 0.002883, 0.001529],
-            'Type': ['NLP', 'NLP', 'NLP', 'NLP', 'NLP', 'NLP', 'NLP', 'NLP', 'NLP', 'NLP',
-                    'Financial', 'Financial', 'Financial', 'Financial', 'Financial']
-        }
-        
-        features_df = pd.DataFrame(features_data)
+
+        evalr = get_model_evaluation(predictor) if predictor else None
+        if evalr and 'importance' in evalr:
+            top = evalr['importance'][:15]
+            features_df = pd.DataFrame({
+                'Feature': [f for f, _ in top],
+                'Importance': [v for _, v in top],
+                'Type': ['NLP' if f.startswith('nlp_') else 'Financial' for f, _ in top],
+            })
+            st.caption("Real `feature_importances_` read directly from the trained "
+                       "multi-class Gradient Boosting model.")
+        else:
+            # Fallback only if the model isn't loaded (demo mode)
+            features_df = pd.DataFrame({
+                'Feature': ['nlp_complexity', 'current_ratio_norm', 'current_ratio',
+                            'total_liabilities', 'total_assets'],
+                'Importance': [0.230, 0.182, 0.121, 0.103, 0.073],
+                'Type': ['NLP', 'Financial', 'Financial', 'Financial', 'Financial'],
+            })
+            st.info("ℹ️ Showing reference values — load the model to compute live importances.")
         
         col1, col2 = st.columns([2, 1])
         
@@ -1150,15 +1227,20 @@ AUC-ROC:   0.997
             st.plotly_chart(fig, use_container_width=True)
         
         with col2:
-            st.markdown("""
+            top_feat = features_df.iloc[0]
+            nlp_share = features_df[features_df['Type'] == 'NLP']['Importance'].sum()
+            fin_share = features_df[features_df['Type'] == 'Financial']['Importance'].sum()
+            leader = 'NLP' if nlp_share >= fin_share else 'Financial'
+            top3 = ', '.join(features_df['Feature'].head(3).tolist())
+            st.markdown(f"""
             <div style='background: #252d3a; padding: 20px; border-radius: 12px; margin-top: 40px;'>
                 <h4 style='color: #4a9eff; margin-top: 0;'>💡 Key Insights</h4>
                 <ul style='line-height: 2;'>
-                    <li><b>NLP features dominate</b> top 10 positions</li>
-                    <li><b>Safety & Risk scores</b> are strongest predictors</li>
-                    <li><b>Sentiment balance</b> highly influential</li>
-                    <li><b>Financial ratios</b> complement NLP features</li>
-                    <li><b>Multimodal approach</b> improves accuracy by 2.32%</li>
+                    <li><b>Top feature:</b> {top_feat['Feature']} ({top_feat['Importance']*100:.1f}%)</li>
+                    <li><b>Top 3:</b> {top3}</li>
+                    <li><b>{leader} features</b> carry the most weight overall</li>
+                    <li>Of the top 15 — NLP: <b>{nlp_share*100:.0f}%</b> · Financial: <b>{fin_share*100:.0f}%</b></li>
+                    <li>Multimodal (financial + NLP) outperforms financial-only</li>
                 </ul>
             </div>
             """, unsafe_allow_html=True)
